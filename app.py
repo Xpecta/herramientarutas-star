@@ -148,7 +148,6 @@ if len(dates)==2:
             folium_static(map2)
 
             st.write("### Cluster Statistics")
-            st.write(data_geo.astype(str))
             # Calculate statistics for each cluster and displayes a table
             resumen_stats=pd.DataFrame(index=sorted(data_geo['Cluster label'].unique()),columns=['Not visited (Last 2 years)','Never Bought (Last 2 years)','Avg Buy','Total Accounts','Territory not covered (%)'])
             for cluster in resumen_stats.index:
