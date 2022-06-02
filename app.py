@@ -230,11 +230,12 @@ if len(dates)==2:
             distan_max['longitude'] = np.radians(distan_max['longitude'])
             try:
                 try:
+                    #First we are going to fill the drive list with the existing accounts. cuentas_distancia contains all the existing accounts
                     cuentas_distancia = distan_max.loc[distan_max['prospect']==0,['latitude','longitude']]
                     if id_cuenta != 'Select one account ID':
                         if id_cuenta not in cuentas_distancia.index:
                             cuentas_distancia = cuentas_distancia.append(distan_max.loc[id_cuenta,['latitude','longitude']])
-                    
+                    #The distance matriz is created
                     distance_matrix=pd.DataFrame(dist.pairwise(cuentas_distancia.to_numpy())*6373,  columns=distan_max[distan_max['prospect']==0].index, index=distan_max[distan_max['prospect']==0].index)
                 except:
                     cuentas_distancia = distan_max[['latitude','longitude']]
@@ -242,7 +243,7 @@ if len(dates)==2:
                         if id_cuenta not in cuentas_distancia.index:
                             cuentas_distancia = cuentas_distancia.append(distan_max.loc[id_cuenta,['latitude','longitude']])
                     distance_matrix=pd.DataFrame(dist.pairwise(cuentas_distancia)*6373,  columns=distan_max.index, index=distan_max.index)
-                
+                #We set as the center account the one with more accounts with a distance less than distancia_maxima
                 distance_matrixx=distance_matrix.apply(lambda x: np.where(x < distancia_maxima,1,0))
                 if id_cuenta != 'Select one account ID':
                     idx_maximo=id_cuenta
@@ -250,13 +251,16 @@ if len(dates)==2:
                     idx_maximo=distance_matrixx.sum().idxmax()
                 
                 center_acc={'id':idx_maximo,'practice_name': temporal_distancias.loc[temporal_distancias['id']==idx_maximo,'practice_name'],'longitude': temporal_distancias.loc[temporal_distancias['id']==idx_maximo,'longitude'].values[0],'latitude': temporal_distancias.loc[temporal_distancias['id']==idx_maximo,'latitude'].values[0]}
+                #Then we create the dataframe with the new accounts
                 distan_news=temporal_distancias.loc[(temporal_distancias['prospect']==1)&(temporal_distancias['Probability']>=0),['id','practice_name','longitude','latitude']]
                 
                 try:
                     distan_news=distan_news.append(center_acc,ignore_index=True).set_index('id').dropna()
                     distan_news['latitude'] = np.radians(distan_news['latitude'])
                     distan_news['longitude'] = np.radians(distan_news['longitude'])
+                    #This is the distance matriz of the new accounts
                     distance_matrix_news=pd.DataFrame(dist.pairwise(distan_news[['latitude','longitude']].to_numpy())*6373,  columns=distan_news.index, index=distan_news.index)
+                    #We select up to 19 existing accounts that are near the center and then we select the remaining of new accounts
                     idx_max=distance_matrix.loc[distance_matrix[idx_maximo]<=distancia_maxima,idx_maximo].sort_values().head(19).index.tolist()
                     cant_nuevas = 25-len(idx_max)+1
                     idx_new=distance_matrix_news.loc[distance_matrix_news[idx_maximo]<distancia_maxima,idx_maximo].sort_values().iloc[1:cant_nuevas].index.tolist()
