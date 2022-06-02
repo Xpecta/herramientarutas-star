@@ -10,7 +10,7 @@ import random
 from querys import *
 import matplotlib.pyplot as plt
 
-
+# Logos y tipografia se carga
 random.seed(10)
 st.set_page_config(page_title="X-SDR",page_icon='Imagenes/starlogoCrop.png')
 st.sidebar.image("Imagenes/starlogo.png", use_column_width=True)
@@ -33,7 +33,7 @@ st.write(
 
 
 check_account=st.sidebar.checkbox("Search for an account")
-
+select_cluster='None'
 # If the person wnat to center a route in one account or just one to see an account probability, the checkbox can be selected and the route is going to be centered in that account
 if check_account:
     id_cuenta=st.sidebar.selectbox("Account ID",['Select one account ID']+dataframe['id'].astype(int).unique().tolist())
@@ -129,6 +129,7 @@ if len(dates)==2:
             map2 = folium.Map(location=center, zoom_start=10,tiles='Stamen Toner')
             rainbow = ['red','yellow','blue','white','purple','pink']
 
+            #Para cada cluster se le asigna y se plotea en el mapa
             for cluster in range(0,k): 
                 group = folium.FeatureGroup(name='<span style=\\"color: {0};\\">{1}</span>'.format(rainbow[cluster-1],cluster))
                 for lat, lon,prob, label in zip(data_geo['latitude'], data_geo['longitude'],data_geo['Probability'], data_geo['Cluster']):
@@ -147,17 +148,20 @@ if len(dates)==2:
             folium_static(map2)
 
             st.write("### Cluster Statistics")
-
-            resumen_stats=pd.DataFrame(index=sorted(data_geo['Cluster label'].unique()),columns=['Not visited','Never Bought','Avg Buy','Total Accounts'])
+            st.write(data_geo.astype(str))
+            # Calculate statistics for each cluster and displayes a table
+            resumen_stats=pd.DataFrame(index=sorted(data_geo['Cluster label'].unique()),columns=['Not visited (Last 2 years)','Never Bought (Last 2 years)','Avg Buy','Total Accounts','Territory not covered (%)'])
             for cluster in resumen_stats.index:
-                resumen_stats.loc[cluster,'Not visited']=data_geo.loc[(data_geo['Cluster label']==cluster)&(data_geo['cum_prevvisits']==0)].shape[0]
-                resumen_stats.loc[cluster,'Never Bought']=data_geo.loc[(data_geo['Cluster label']==cluster)&(data_geo['cum_prevbuys']==0)].shape[0]
+                resumen_stats.loc[cluster,'Not visited (Last 2 years)']=data_geo.loc[(data_geo['Cluster label']==cluster)&((data_geo['cum_prevvisits']==0)|(data_geo['months_since_last_visit']>24))].shape[0]
+                resumen_stats.loc[cluster,'Never Bought (Last 2 years)']=int(data_geo.loc[(data_geo['Cluster label']==cluster)&((data_geo['cum_prevbuys']==0)|(data_geo['months_since_last_offer']>24))].shape[0])
                 resumen_stats.loc[cluster,'Total Accounts']=data_geo.loc[(data_geo['Cluster label']==cluster)].shape[0]
                 resumen_stats.loc[cluster,'Avg Buy']=data_geo.loc[(data_geo['Cluster label']==cluster),'total_spent'].sum()/data_geo.loc[(data_geo['Cluster label']==cluster),'cum_prevbuys'].sum()
+                resumen_stats.loc[cluster,'Territory not covered (%)'] = (resumen_stats.loc[cluster,'Not visited (Last 2 years)']/data_geo[data_geo['Cluster label']==cluster].shape[0])*100
             st.write(resumen_stats)
             select_cluster=st.selectbox("Select the cluster that you wan to cover",['None']+sorted(data_geo['Cluster label'].unique()))
-        except:
+        except Exception as e:
             st.warning("There are no accounts with location info")
+            st.warning(str(e))
             select_cluster='None'
         
         
@@ -204,6 +208,8 @@ if len(dates)==2:
     lastDay = dates[1]
     delta = lastDay - firstDay
     probas=data[['id']]
+
+    # We create a drive list for each selected day
     for i in range(delta.days + 1):
         day = firstDay + timedelta(days=i)
         weekDay=weekDays[day.weekday()]
@@ -212,11 +218,12 @@ if len(dates)==2:
                 """**{} - {}**""".format(weekDay,day)
             )
 
-            
+            # First we select the center of the drive list,  this should be an account with more than 5% Buy probability
             distan_max=temporal_distancias[temporal_distancias['Probability']>0.05].sort_values(by='Probability',ascending=False)[['id','practice_name','prospect','longitude','latitude']].set_index('id').dropna()
             if distan_max.shape[0]==0:
                 distan_max=temporal_distancias[temporal_distancias['Probability']>=0].sort_values(by='Probability',ascending=False)[['id','practice_name','prospect','longitude','latitude']].set_index('id').dropna()
 
+            #If the user is looking for a specific account we choose this one to be the center 
             if id_cuenta != 'Select one account ID':
                 if id_cuenta not in distan_max.index:
                     distan_max=distan_max.append(datas.loc[datas['id']==id_cuenta,['id','practice_name','prospect','longitude','latitude']].set_index('id'))
@@ -248,8 +255,6 @@ if len(dates)==2:
                 
                 try:
                     distan_news=distan_news.append(center_acc,ignore_index=True).set_index('id').dropna()
-                    #else:
-                    #distan_news=distan_news.set_index('id')
                     distan_news['latitude'] = np.radians(distan_news['latitude'])
                     distan_news['longitude'] = np.radians(distan_news['longitude'])
                     distance_matrix_news=pd.DataFrame(dist.pairwise(distan_news[['latitude','longitude']].to_numpy())*6373,  columns=distan_news.index, index=distan_news.index)
