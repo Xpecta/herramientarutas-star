@@ -57,14 +57,16 @@ def rep_cluster(name):
 query="""
 WITH avg_revisit_visit AS
 (
-    SELECT account_id as id, AVG(DATE_DIFF(DATE(offer_date), DATE(PriorDate),MONTH)) as avg_revisit_visit, CAST(MIN(offer_date) as DATE) as first_visit_date
+    SELECT account_id as id, AVG(DATE_DIFF(DATE(offer_date), DATE(PriorDate),MONTH)) as avg_revisit_visit, CAST(MIN(offer_date) as DATE) as first_visit_date,CAST(MAX(offer_date) as DATE) as last_visit_date
     FROM (
     SELECT
         account_id,
         offer_date,
+        status,
         LAG(offer_date) OVER (PARTITION BY account_id ORDER BY offer_date) as PriorDate
     FROM `star-big-data.star_us_rds.offers`
     WHERE EXTRACT(YEAR FROM offer_date) > 2018)
+    WHERE status <> 'NoVisit'
     GROUP BY account_id
     ORDER BY account_id 
 ),
@@ -162,7 +164,7 @@ CASE
     WHEN DATE_DIFF(DATE(CURRENT_DATE()), DATE(a.last_visit_date),MONTH) >= 24 then NULL 
 END as months_since_last_visit, asr.statusandrating, cd.cum_prevvisits, cd.cum_prevbuys,
 CASE
-    WHEN cum_prevbuys=0 or DATE_DIFF(DATE(CURRENT_DATE()), DATE(a.last_visit_date),MONTH) >= 24 then 1
+    WHEN (cum_prevbuys=0 or cum_prevbuys IS NULL) or DATE_DIFF(DATE(CURRENT_DATE()), DATE(a.last_visit_date),MONTH) >= 24 then 1
     ELSE 0
 END as prospect
 FROM accounts a
