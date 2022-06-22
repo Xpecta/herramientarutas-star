@@ -77,6 +77,7 @@ if len(dates)==2:
 
     try:
         datas1=calcular_proba_prospect(data[data['prospect']==1],dates)
+        datas1['Probability']=datas1['Probability'].replace(0.43,0)
     except:
         datas1=pd.DataFrame()
         st.warning("There are not prospect accounts.")
@@ -93,8 +94,8 @@ if len(dates)==2:
     datas["Probability"]=datas[['Probability','last_visit_outcome','months_since_last_visit','prospect']].apply(lambda x: corregir_proba(x[0],x[1],x[2],x[3]),axis=1)
     outcomes_tiempo=['NoOffer: Not Enough Scrap','Rejected: Not enough scrap to sell','NoOffer: Rejected offer to low','NoOffer: Committed to Competitor','NoOffer: Committed to competitor','NoOffer: Sends to corporate','NoOffer: Does Not Collect','Accepted']
     
-    
-    datas['Buy Probability']=np.round(datas['Probability']*100,1).astype(str)+'%'
+    datas['Buy Probability']=datas['Probability'].apply(lambda x: 'Low' if x<0.3 else ('Medium' if x<0.6 else 'High') )
+    #datas['Buy Probability']=np.round(datas['Probability']*100,1).astype(str)+'%'
     datas['last_accepted_date']=datas['last_accepted_date'].apply(lambda x: str(x)[:10] if x!=np.nan else '')
    
 #MAPS AND TABLES
@@ -179,13 +180,14 @@ if len(dates)==2:
     datas[['last_accepted_date','last_visit_date']]=datas[['last_accepted_date','last_visit_date']].fillna('')
     datas['last_visit_outcome']=datas['last_visit_outcome'].fillna('')
     datas['last_visit_date']=datas['last_visit_date'].fillna('')
+    datas['last_accepted_date']=datas['last_accepted_date'].replace('None',np.nan)
     datas['last_accepted_date']=datas['last_accepted_date'].fillna('')
     
     #TABLES 
-    data_visual=datas[['id','name','practice_name','Buy Probability','city','zip_left','phone','last_accepted_date','last_visit_date','last_visit_outcome','accountstatus', 'accountrating','Probability','latitude','longitude','prospect']].rename(columns={'practice_name':'Practice Name','zip_left':'Zip','last_accepted_date':'Last Buy Date','last_visit_date':'Last Visit Date','last_visit_outcome':'LV Outcome'})
+    data_visual=datas[['id','name','practice_name','Buy Probability','city','zip_left','phone','last_accepted_date','last_visit_date','last_visit_outcome','statusandrating','Probability','prospect']].rename(columns={'practice_name':'Practice Name','zip_left':'Zip','last_accepted_date':'Last Buy Date','last_visit_date':'Last Visit Date','last_visit_outcome':'LV Outcome','statusandrating':'Status - Rating'})
     if id_cuenta != 'Select one account ID':
         st.write("**Target account:**")
-        st.write(data_visual[data_visual['id']==id_cuenta].astype(str))
+        st.write(data_visual[data_visual['id']==id_cuenta].drop(columns=['Probability']).astype(str))
     if sort=='Ascending':
         data_visual=data_visual.sort_values(by='Probability',ascending=True).drop(columns=['Probability'])
         st.write(data_visual.reset_index(drop=True).fillna('').astype(str))
