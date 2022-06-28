@@ -178,8 +178,15 @@ WHERE( a.specialty<>'Private Buys' or a.specialty IS NULL)  and statusandrating 
 """
 
 @st.cache(ttl=28800)
-def cargar_datos():
+def upload_data():
+    """It connects to BigQuery and get all the data needed
+
+    Returns:
+        DataFrame: DataFrame with all the data
+    """
     df = (BigQuery_client.query(query).result().to_dataframe(create_bqstorage_client=True,))
+    reps = pd.read_excel('data/repHouses.xlsx',engine="openpyxl").rename(columns={'lat':'rep_lat','lon':'rep_lon'})
     df['state_cluster']=df['state'].apply(state_group)
     df['rep_cluster']=df["name"].apply(rep_cluster)
+    df = df.merge(reps[['name','rep_lat','rep_lon']],how='left',on='name')
     return df
