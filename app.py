@@ -9,6 +9,7 @@ from funciones import *
 import random 
 from querys import *
 import matplotlib.pyplot as plt
+from google_route import *
 
 # Logos y tipografia se carga
 random.seed(10)
@@ -19,8 +20,7 @@ st.sidebar.subheader('Prospecting Edition')
 
 # THIS FILE DISPLAYS THE WEB PAGE USING THE STREAMLIT PACKAGE. TO SEE THE WEBPAGE IT IS NECESSARY TO 
 # INSTALL STREAMLIT PACKAGE AND RUN "streamlit run app.py" ON TERMINAL
-dataframe=cargar_datos()
-
+dataframe=upload_data()
 st.write(
     """
     # Accounts Detail
@@ -122,6 +122,16 @@ if len(dates)==2:
                 iframe = folium.IFrame(html)
                 popup = folium.Popup(iframe,min_width=180,max_width=190)
                 folium.Circle(location=[data_geo.iloc[i]['latitude'], data_geo.iloc[i]['longitude']],popup=popup,radius=150,fill=True,color=colormap(data_geo.iloc[i]['Probability']),fill_opacity=0.8).add_to(map1)
+            #Add rep house
+            try:
+                prac_name=f"{data_geo['name'].unique()[0]}'s house"
+                html = f"Practice Name: {prac_name} "
+                iframe = folium.IFrame(html)
+                popup = folium.Popup(iframe,min_width=180,max_width=190)
+                folium.Circle(location=[data_geo['rep_lat'].unique()[0], data_geo['rep_lon'].unique()[0]],popup=popup,radius=150,fill=True,color="blue").add_to(map1)
+                rep_house = [data_geo['rep_lat'].unique()[0], data_geo['rep_lon'].unique()[0]]
+            except:
+                st.error("The house of the rep is not in this state")
             folium_static(map1)
 
             st.write("## Map with clusters")
@@ -187,13 +197,13 @@ if len(dates)==2:
     data_visual=datas[['id','name','practice_name','Buy Probability','city','zip_left','phone','last_accepted_date','last_visit_date','last_visit_outcome','statusandrating','Probability','prospect']].rename(columns={'practice_name':'Practice Name','zip_left':'Zip','last_accepted_date':'Last Buy Date','last_visit_date':'Last Visit Date','last_visit_outcome':'LV Outcome','statusandrating':'Status - Rating'})
     if id_cuenta != 'Select one account ID':
         st.write("**Target account:**")
-        st.write(data_visual[data_visual['id']==id_cuenta].drop(columns=['Probability']).astype(str))
+        st.write(data_visual[data_visual['id']==id_cuenta].astype(str)).drop(columns='Probability')
     if sort=='Ascending':
-        data_visual=data_visual.sort_values(by='Probability',ascending=True).drop(columns=['Probability'])
-        st.write(data_visual.reset_index(drop=True).fillna('').astype(str))
+        data_visual=data_visual.sort_values(by='Probability',ascending=True)
+        st.write(data_visual.reset_index(drop=True).drop(columns='Probability').fillna('').astype(str))
     elif sort=='Descending':
-        data_visual=data_visual.sort_values(by='Probability',ascending=False).drop(columns=['Probability'])
-        st.write(data_visual.reset_index(drop=True).fillna('').astype(str))
+        data_visual=data_visual.sort_values(by='Probability',ascending=False)
+        st.write(data_visual.reset_index(drop=True).drop(columns='Probability').fillna('').astype(str))
     download_button(data_visual.astype(str), f'accountsProbabilities.xlsx', f'Download Table', pickle_it=False)
 
     # SUGGESTED DRIVE LIST COMPUTATION
@@ -271,16 +281,28 @@ if len(dates)==2:
                     print('No hay suficientes prospect')
                     indices=idx_max
                 
-                drive_list=datas.sort_values(by='Probability',ascending=False).loc[datas['id'].isin(indices),['id','practice_name','Buy Probability','last_visit_outcome','city','zip_left','phone','last_accepted_date','last_visit_date']].rename(columns={'practice_name':'Practice Name','zip_left':'Zip','last_accepted_date':'Last Buy Date','last_visit_date':'Last Visit Date'}).reset_index(drop=True)
+                drive_list=datas.sort_values(by='Probability',ascending=False).loc[datas['id'].isin(indices),['id','practice_name','Buy Probability','last_visit_outcome','city','zip_left','phone','last_accepted_date','last_visit_date','latitude','longitude','Probability']].rename(columns={'practice_name':'Practice Name','zip_left':'Zip','last_accepted_date':'Last Buy Date','last_visit_date':'Last Visit Date'}).reset_index(drop=True)
                 drive_list['Last Buy Date']=drive_list['Last Buy Date'].replace('nan','')
+                try:
+                    drive_list.index=drive_list.index+1
+                    drive_list.loc[0]=[0,prac_name,'','','','','','','',rep_house[0],rep_house[1],0]
+                    drive_list=drive_list.sort_index()
+                except:
+                    st.error("The rep house is not in the state, so it the starting point is not in the drive list")
                 
-
-                st.write(drive_list.astype(str))
-                download_button(drive_list, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
-            
-                temporal_distancias.drop(temporal_distancias[temporal_distancias['id'].isin(indices)].index,inplace=True)
             except Exception as e:
                 st.error(f'There are no enough high probability accounts to visit this day. \n {str(e)}')
+            data = create_google_data(drive_list)
+            solution,manager,routing = solve_route(data)
+            if solution:
+                f = print_solution(data,manager,routing,solution,drive_list[['id','Practice Name','Buy Probability','city','Zip','phone','last_visit_outcome','Last Buy Date','Last Visit Date']])
+                st.write(f.astype(str))
+            else:
+                st.write("Error happened while creating the route")
+            #st.write(drive_list.drop(columns=['latitude','longitude','Probability']).astype(str))
+            download_button(f, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
+            
+            temporal_distancias.drop(temporal_distancias[temporal_distancias['id'].isin(indices)].index,inplace=True)
 
 else:
     st.error("Select a date range to view the probabilities.")
