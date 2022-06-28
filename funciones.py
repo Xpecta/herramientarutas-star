@@ -107,7 +107,7 @@ def corregir_proba(proba,lv_outcome,lv_date,prospect):
             x=-1
         elif lv_date<3 and lv_outcome =='Accepted':
             x=-1
-        elif lv_date<1:
+        elif lv_date<2:
             x=-1
     else:
         if lv_date<1 and lv_outcome =='NoOffer: Not Enough Scrap':
