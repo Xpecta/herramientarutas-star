@@ -48,7 +48,8 @@ else:
 #In this section the person can filter the dataframe by rep, zip_code,state,territory_name,city and county
 if rep != 'All':
     dataframe = dataframe[dataframe['name']==rep]
-
+    rep_house = [dataframe['rep_lat'].unique()[0], dataframe['rep_lon'].unique()[0]]
+    rephouse_name=f"{dataframe['name'].unique()[0]}'s house"
 zip_code=st.sidebar.selectbox("Choose a Zip Code",['All']+list(dataframe['zip_left']))
 if zip_code!='All':
     dataframe = dataframe[dataframe['zip_left']==zip_code]
@@ -124,12 +125,11 @@ if len(dates)==2:
                 folium.Circle(location=[data_geo.iloc[i]['latitude'], data_geo.iloc[i]['longitude']],popup=popup,radius=150,fill=True,color=colormap(data_geo.iloc[i]['Probability']),fill_opacity=0.8).add_to(map1)
             #Add rep house
             try:
-                prac_name=f"{data_geo['name'].unique()[0]}'s house"
-                html = f"Practice Name: {prac_name} "
+                
+                html = f"Practice Name: {rephouse_name} "
                 iframe = folium.IFrame(html)
                 popup = folium.Popup(iframe,min_width=180,max_width=190)
                 folium.Circle(location=[data_geo['rep_lat'].unique()[0], data_geo['rep_lon'].unique()[0]],popup=popup,radius=150,fill=True,color="blue").add_to(map1)
-                rep_house = [data_geo['rep_lat'].unique()[0], data_geo['rep_lon'].unique()[0]]
             except:
                 st.error("The house of the rep is not in this state")
             folium_static(map1)
@@ -283,24 +283,28 @@ if len(dates)==2:
                 
                 drive_list=datas.sort_values(by='Probability',ascending=False).loc[datas['id'].isin(indices),['id','practice_name','Buy Probability','last_visit_outcome','city','zip_left','phone','last_accepted_date','last_visit_date','latitude','longitude','Probability']].rename(columns={'practice_name':'Practice Name','zip_left':'Zip','last_accepted_date':'Last Buy Date','last_visit_date':'Last Visit Date'}).reset_index(drop=True)
                 drive_list['Last Buy Date']=drive_list['Last Buy Date'].replace('nan','')
-                try:
-                    drive_list.index=drive_list.index+1
-                    drive_list.loc[0]=[0,prac_name,'','','','','','','',rep_house[0],rep_house[1],0]
-                    drive_list=drive_list.sort_index()
-                except:
-                    st.error("The rep house is not in the state, so it the starting point is not in the drive list")
+                
+                drive_list.index=drive_list.index+1
+                drive_list.loc[0]=[0,rephouse_name,'','','','','','','',rep_house[0],rep_house[1],0]
+                drive_list=drive_list.sort_index()
+
                 
             except Exception as e:
                 st.error(f'There are no enough high probability accounts to visit this day. \n {str(e)}')
-            data = create_google_data(drive_list)
-            solution,manager,routing = solve_route(data)
-            if solution:
-                f = print_solution(data,manager,routing,solution,drive_list[['id','Practice Name','Buy Probability','city','Zip','phone','last_visit_outcome','Last Buy Date','Last Visit Date']])
-                st.write(f.astype(str))
-            else:
-                st.write("Error happened while creating the route")
+            try:
+                data = create_google_data(drive_list)
+                solution,manager,routing = solve_route(data)
+                if solution:
+                    f = print_solution(data,manager,routing,solution,drive_list[['id','Practice Name','Buy Probability','city','Zip','phone','last_visit_outcome','Last Buy Date','Last Visit Date']])
+                    st.write(f.astype(str))
+                    download_button(f, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
+                else:
+                    st.write("Error happened while creating the route")
+            except:
+                st.write(drive_list.astype(str))
+                download_button(drive_list, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
             #st.write(drive_list.drop(columns=['latitude','longitude','Probability']).astype(str))
-            download_button(f, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
+            
             
             temporal_distancias.drop(temporal_distancias[temporal_distancias['id'].isin(indices)].index,inplace=True)
 
