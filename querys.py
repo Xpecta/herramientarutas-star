@@ -177,7 +177,7 @@ LEFT JOIN cummulative_data cd ON cd.account_id = a.id
 WHERE( a.specialty<>'Private Buys' or a.specialty IS NULL)  and statusandrating <> 'Deleted Poor' and statusandrating <> 'NPS Poor' and statusandrating <> 'Lead Unqualified' and statusandrating <> 'Lost Poor' 
 """
 
-@st.cache(ttl=28800)
+@st.cache(ttl=28800,allow_output_mutation=True)
 def upload_data():
     """It connects to BigQuery and get all the data needed
 
