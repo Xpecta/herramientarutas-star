@@ -291,18 +291,20 @@ if len(dates)==2:
                 
             except Exception as e:
                 st.error(f'There are no enough high probability accounts to visit this day. \n {str(e)}')
-            try:
-                data = create_google_data(drive_list)
-                solution,manager,routing = solve_route(data)
-                if solution:
-                    f = print_solution(data,manager,routing,solution,drive_list[['id','Practice Name','Buy Probability','city','Zip','phone','last_visit_outcome','Last Buy Date','Last Visit Date']])
-                    st.write(f.astype(str))
-                    download_button(f, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
-                else:
-                    st.write("Error happened while creating the route")
-            except:
-                st.write(drive_list.astype(str))
-                download_button(drive_list, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
+            #try:
+            st.write(drive_list.astype(str))
+            download_button(drive_list, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
+                #data = create_google_data(drive_list)
+                #solution,manager,routing = solve_route(data)
+                #if solution:
+                #    f = print_solution(data,manager,routing,solution,drive_list[['id','Practice Name','Buy Probability','city','Zip','phone','last_visit_outcome','Last Buy Date','Last Visit Date']])
+                #    st.write(f.astype(str))
+                #    download_button(f, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
+                #else:
+                #    st.write("Error happened while creating the route")
+            #except:
+            #    st.write(drive_list.astype(str))
+            #    download_button(drive_list, f'accountsProbabilities.xlsx', f'Download Suggested Drive List', pickle_it=False)
             #st.write(drive_list.drop(columns=['latitude','longitude','Probability']).astype(str))
             
             
